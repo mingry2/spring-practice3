@@ -3,22 +3,17 @@ package dao;
 import domain.User;
 
 import java.sql.*;
-import java.util.Map;
 
 public class UserDao {
+    private ConnectionMaker connectionMaker;
 
-    private Connection makeConnection() throws SQLException {
-        Map<String, String> evn = System.getenv();
-            Connection c = DriverManager.getConnection(
-                    evn.get("DB_HOST"),
-                    evn.get("DB_USER"),
-                    evn.get("DB_PASSWORD"));
-            return c;
-
+    public UserDao(ConnectionMaker connectionMaker) {
+        this.connectionMaker = connectionMaker;
     }
-    public void add(User user){
+
+    public void add(User user) throws ClassNotFoundException {
         try {
-            Connection c = makeConnection();
+            Connection c = connectionMaker.makeConnection();
 
             PreparedStatement ps = c.prepareStatement("INSERT INTO users(id, name, password) VALUES(?, ?, ?);");
             ps.setString(1, user.getId());
@@ -34,10 +29,10 @@ public class UserDao {
         }
     }
 
-    public User getById(String id) {
+    public User getById(String id) throws ClassNotFoundException {
 
         try {
-            Connection c = makeConnection();
+            Connection c = connectionMaker.makeConnection();
 
             PreparedStatement ps = c.prepareStatement("SELECT id, name, password FROM users WHERE id = ?");
             ps.setString(1, id);
@@ -55,8 +50,28 @@ public class UserDao {
         }
     }
 
+    public void deleteAll() throws SQLException, ClassNotFoundException {
+        Connection c = connectionMaker.makeConnection();
+        PreparedStatement ps = c.prepareStatement("delete from users");
+        ps.executeUpdate();
+        ps.close();
+        c.close();
+    }
+
+    public int getCount() throws SQLException, ClassNotFoundException {
+        Connection c = connectionMaker.makeConnection();
+        PreparedStatement ps = c.prepareStatement("select count(*) from users");
+        ResultSet rs = ps.executeQuery();
+        rs.next();
+        int cnt = rs.getInt(1);
+        rs.close();
+        ps.close();
+        c.close();
+        return cnt;
+    }
+
     public static void main(String[] args) throws SQLException, ClassNotFoundException {
-        UserDao userDao = new UserDao();
+        UserDao userDao = new UserDao(new AWSConnectionMaker());
 //        userDao.add();
         User user = userDao.getById("1");
         System.out.println(user.getName());
